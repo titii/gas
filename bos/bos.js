@@ -11,9 +11,15 @@ function myFunction() {
   var roeList = getROE(keyRatio);
   var interestCoverageList = getInterestCoverage(keyRatio);
   var netProfitMarginList = getNetProfitMargin(keyRatio);
+
+  updateAssessSheet(epsList, freeCashFlowList, dividends, roeList, interestCoverageList, netProfitMarginList);
   
   
   Logger.log(roeList);
+}
+
+function updateAssessSheet(epsList, freeCashFlowList, dividends, roeList, interestCoverageList, netProfitMarginList) {
+	
 }
 
 function getEPS(financials) {
