@@ -1,18 +1,19 @@
-function myfunction() {
-	var ss = SpreadsheetApp.getActiveSpreadsheet();
-	var sht = ss.getSheetByName("BOS");
-	var targetCell = sht.getActiveCell();
-	var Ticker = targetCell.getValue();
-	var html = UrlFetchApp.fetch('https://www.morningstar.com/stocks/xtks/' + Ticker + '/quote').getContentText();
+function myFunction() {
+  var ticker = "GIS";
+  var url = "http://financials.morningstar.com/finan/financials/getKeyStatPart.html?&callback=jsonp1579473219364&t=XNYS:"+ ticker +"&region=usa&culture=en-US&cur=&order=asc&_=1579473220658";
+  var jsonp = UrlFetchApp.fetch(url).getContentText();
+  var roeList = getROE(jsonp);
+  
+  
+  Logger.log(roeList);
+}
 
-	var parser = Parser.data(html);
-	var trList = parser.from('<tr>').to('</tr>').iterate();
-	for each(var tr in trList) {
- 		var category = Parser.data(tr).from('<div class="category">').to('</div>').build();
-		if (category.indexOf("技術") === -1) {
-			continue;
-  		}
-  		var title = Parser.data(entry).from('<div class="title">').to('</div>').build();
-  		titles.push(title);
-	}
+function getROE(jsonp) {
+  var roeRegExp = /<td align=\\"right\\" headers=\\"pr-pro-Y[0-9]{1,2} pr-profit i26\\">(.*?)</g;
+  var roeTags = jsonp.match(roeRegExp);
+  var roeList = []
+  for(var i = 0; i < roeTags.length; i++) {
+    roeList.push(roeTags[i].match(/>(.*?)</)[1]);
+  }
+  return roeList;
 }
