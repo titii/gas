@@ -2,10 +2,9 @@ var no = "なし　No";
 var yes = "ある　Yes";
 function myFunction() {
   var sheet = SpreadsheetApp.getActiveSheet(); 
-  var ticker = sheet.getRange(2, 2).getValue();;
-  var byId = getById(ticker);
-  // var stockMarket = getStockMarcket(ticker);
-
+  var ticker = sheet.getRange(2, 2).getValue().toString();
+  var stockExchange = getStockExchange(sheet);
+  var byId = getById(ticker, stockExchange);
   var financialsUrl = "https://financials.morningstar.com/finan/financials/getFinancePart.html?&callback=jsonp1580192904311&t="+ byId +"&region=usa&culture=en-US&cur=&order=asc&_=1580192905566"
   var financials = UrlFetchApp.fetch(financialsUrl).getContentText();
   var keyRatioUrl = "https://financials.morningstar.com/finan/financials/getKeyStatPart.html?&callback=jsonp1579473219364&t="+ byId +"&region=usa&culture=en-US&cur=&order=asc&_=1579473220658";
@@ -23,12 +22,8 @@ function myFunction() {
   updateAssessSheet(epsList, freeCashFlowList, dividendsList, roeList, interestCoverageList, netProfitMarginList);
 }
 
-function getStockMarcket(ticker) {
-  var url = "https://www.google.com/search?q=morningstar+" + ticker.toLowerCase() + "&num=" + 10;
-  var response = UrlFetchApp.fetch(url).getContentText('UTF-8');
-  var morningstarRegExp = /<cite class="iUh30 bc rpCHfe tjvcx">www.morningstar.com › stocks › .+ › quote</;
-  var citeTag = response.match(morningstarRegExp)
-  Logger.log(citeTag)
+function getStockExchange(sheet) {
+  return sheet.getRange(3, 2).getValue();
 }
 
 function clearFundamentals(sheet, epsList, freeCashFlowList, dividendsList, roeList, interestCoverageList, netProfitMarginList) {
@@ -37,7 +32,7 @@ function clearFundamentals(sheet, epsList, freeCashFlowList, dividendsList, roeL
   // sheet分を-1
   var cols = fundamentals[0].length;
 
-  sheet.getRange(4,1,rows,cols).clearContent();
+  sheet.getRange(5,1,rows,cols).clearContent();
 }
 
 function extractColName(htmlTag) {
@@ -52,10 +47,10 @@ function extractColName(htmlTag) {
   return colName;
 }
 
-function getById(ticker) {
-  var mStarQuoteUrl = "https://www.morningstar.com/stocks/xnys/"+ ticker.toLowerCase() +"/quote";
+function getById(ticker, stockExchange) {
+  var mStarQuoteUrl = "https://www.morningstar.com/stocks/"+ stockExchange +"/"+ ticker.toLowerCase() +"/quote";
   var mStarQuote = UrlFetchApp.fetch(mStarQuoteUrl).getContentText();
-  var byIdRegExp = /byId:{\"(.+)\":u}/;
+  var byIdRegExp = /byId:{\"(.+)\":.}/;
   var byId = mStarQuote.match(byIdRegExp)
   return byId[1];
 }
@@ -66,7 +61,7 @@ function writeFundamentals(sheet, epsList, freeCashFlowList, dividendsList, roeL
   // sheet分を-1
   var cols = fundamentals[0].length;
 
-  sheet.getRange(4,1,rows,cols).setValues(fundamentals);
+  sheet.getRange(5,1,rows,cols).setValues(fundamentals);
 }
 
 function updateAssessSheet(epsList, freeCashFlowList, dividendsList, roeList, interestCoverageList, netProfitMarginList) {
