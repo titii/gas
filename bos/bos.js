@@ -1,5 +1,9 @@
 var no = "なし　No";
 var yes = "ある　Yes";
+var intCovRatioValues = [">  10", "> 4"];
+var netProfitMarginValues = [">20%", ">10%"];
+
+
 function myFunction() {
   var sheet = SpreadsheetApp.getActiveSheet(); 
   var ticker = sheet.getRange(2, 2).getValue().toString();
@@ -19,7 +23,7 @@ function myFunction() {
 
   clearFundamentals(sheet, epsList, freeCashFlowList, dividendsList, roeList, interestCoverageList, netProfitMarginList);
   writeFundamentals(sheet, epsList, freeCashFlowList, dividendsList, roeList, interestCoverageList, netProfitMarginList);
-  updateAssessSheet(epsList, freeCashFlowList, dividendsList, roeList, interestCoverageList, netProfitMarginList);
+  assessFundamentals(sheet, epsList, freeCashFlowList, dividendsList, roeList, interestCoverageList, netProfitMarginList);
 }
 
 function getStockExchange(sheet) {
@@ -47,6 +51,22 @@ function extractColName(htmlTag) {
   return colName;
 }
 
+function replaceToDash(list) {
+  var replacedList = [];
+  for (var i = 0; i < list.length; i++) {
+    replacedList.push(list[i].replace("&mdash;", "-"))
+  }
+  return replacedList;
+}
+
+function replaceToNumber(str) {
+  return Number(str.replace(/,/g, ''));
+}
+
+function replaceToFloat(str) {
+  return parseFloat(str.replace(/,/g, ''));
+}
+
 function getById(ticker, stockExchange) {
   var mStarQuoteUrl = "https://www.morningstar.com/stocks/"+ stockExchange +"/"+ ticker.toLowerCase() +"/quote";
   var mStarQuote = UrlFetchApp.fetch(mStarQuoteUrl).getContentText();
@@ -58,23 +78,36 @@ function getById(ticker, stockExchange) {
 function writeFundamentals(sheet, epsList, freeCashFlowList, dividendsList, roeList, interestCoverageList, netProfitMarginList) {
   var fundamentals = [epsList, freeCashFlowList, dividendsList, roeList, interestCoverageList, netProfitMarginList];
   var rows = fundamentals.length;
-  // sheet分を-1
   var cols = fundamentals[0].length;
 
-  sheet.getRange(5,1,rows,cols).setValues(fundamentals);
+  var replacedfundamentals = [];
+  for (var i = 0; i < fundamentals.length; i++) {
+    var replacedResult = replaceToDash(fundamentals[i]);
+    replacedfundamentals.push(replacedResult);
+  }
+
+  sheet.getRange(5,1,rows,cols).setValues(replacedfundamentals);
 }
 
-function updateAssessSheet(epsList, freeCashFlowList, dividendsList, roeList, interestCoverageList, netProfitMarginList) {
-	assessEPS(epsList);
-	assessFreeCashFlow(freeCashFlowList);
-	assessDividends(dividendsList);
-	assessROE(roeList);
-	assessIC(interestCoverageList);
+function assessFundamentals(sheet, epsList, freeCashFlowList, dividendsList, roeList, interestCoverageList, netProfitMarginList) {
+	var epsResult = assessEPS(epsList);
+	var fcfResult = assessFreeCashFlow(freeCashFlowList);
+	var dividendsResult = assessDividends(dividendsList);
+	var roeResult = assessROE(roeList);
+	var icResult = assessIC(interestCoverageList);
+  var netProfitMarginResult = assessNPM(netProfitMarginList);
+
+  sheet.getRange(14,7).setValue(epsResult);
+  sheet.getRange(14,8).setValue(fcfResult);
+  sheet.getRange(14,9).setValue(roeResult);
+  sheet.getRange(14,10).setValue(icResult);
+  sheet.getRange(14,12).setValue(netProfitMarginResult);
+  sheet.getRange(14,13).setValue(dividendsResult);
 }
 
 function assessEPS(epsList) {
   for(var i = 0; i < epsList.length; i++) {
-	 	if(epsList[i] < 0) {
+	 	if(epsList[i] === "&mdash;" || replaceToFloat(epsList[i]) < 0) {
 	      return no;
 	    }
 	}
@@ -83,7 +116,7 @@ function assessEPS(epsList) {
 
 function assessFreeCashFlow(freeCashFlowList) {
   for(var i = 0; i < freeCashFlowList.length; i++) {
-	 	if(freeCashFlowList[i] < 0) {
+	 	if(freeCashFlowList[i] === "&mdash;" || replaceToNumber(freeCashFlowList[i]) < 0) {
 	      return no;
 	    }
 	}
@@ -93,22 +126,25 @@ function assessFreeCashFlow(freeCashFlowList) {
 function assessDividends(dividendsList) {
 	var dividends = 0;
   for(var i = 0; i < dividendsList.length; i++) {
-	 	if(dividendsList[i] < 0) {
+    var value = replaceToFloat(dividendsList[i]);
+	 	if(dividendsList[i] === "&mdash;" || value < 0) {
 	      dividends = 0;
 	    } else {
-	    	dividends = dividendsList[i];
+	    	dividends = value;
 	    }
 	}
-	if (dividends < 0) {
+
+	if (dividends == 0) {
 		return no;
-	} else {
+	} 
+  else if (0 < dividends) {
 		return yes;
 	}
 }
 
 function assessROE(roeList) {
   for(var i = 0; i < roeList.length; i++) {
-	 	if(roeList[i] < 15) {
+	 	if(roeList[i] === "&mdash;" || replaceToFloat(roeList[i]) < 15) {
 	      return no;
 	    }
 	}
@@ -118,18 +154,35 @@ function assessROE(roeList) {
 function assessIC(interestCoverageList) {
 	var ic = ">  10";
   for(var i = 0; i < interestCoverageList.length; i++) {
-	 	if(interestCoverageList[i] > 10) {
+	 	if(interestCoverageList[i] === "&mdash;" || replaceToFloat(interestCoverageList[i]) > 10) {
 	    ic = ">  10";
 	  }
 	  else if(interestCoverageList[i] > 4) {
-	    ic = ">  4";
+	    ic = "> 4";
 	  }
 	  else {
 	  	ic = no;
 	  }
 
 	}
-	return no;
+	return ic;
+}
+
+function assessNPM(netProfitMarginList) {
+  var npm = ">20%";
+  for(var i = 0; i < netProfitMarginList.length; i++) {
+    if(netProfitMarginList[i] === "&mdash;" || replaceToFloat(netProfitMarginList[i]) > 10) {
+      npm = ">20%";
+    }
+    else if(netProfitMarginList[i] > 4) {
+      npm = ">10%";
+    }
+    else {
+      npm = no;
+    }
+
+  }
+  return npm;
 }
 
 function getEPS(financials) {
