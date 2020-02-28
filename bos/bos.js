@@ -20,9 +20,13 @@ function myFunction() {
   var roeList = getROE(keyRatio);
   var interestCoverageList = getInterestCoverage(keyRatio);
   var netProfitMarginList = getNetProfitMargin(keyRatio);
+  var growthPercentile = getEPSGrowth(keyRatio);
+  var bookValueList = getBookValue(financials);
 
   clearFundamentals(sheet, epsList, freeCashFlowList, dividendsList, roeList, interestCoverageList, netProfitMarginList);
   writeFundamentals(sheet, epsList, freeCashFlowList, dividendsList, roeList, interestCoverageList, netProfitMarginList);
+  writeEPSGrowth(sheet, growthPercentile);
+  writeBookValue(sheet, bookValueList);
   assessFundamentals(sheet, epsList, freeCashFlowList, dividendsList, roeList, interestCoverageList, netProfitMarginList);
 }
 
@@ -51,12 +55,16 @@ function extractColName(htmlTag) {
   return colName;
 }
 
-function replaceToDash(list) {
+function replaceToDashForList(list) {
   var replacedList = [];
   for (var i = 0; i < list.length; i++) {
     replacedList.push(list[i].replace("&mdash;", "-"))
   }
   return replacedList;
+}
+
+function replaceToDash(string) {
+  return string.replace("&mdash;", "-");
 }
 
 function replaceToNumber(str) {
@@ -75,6 +83,13 @@ function getById(ticker, stockExchange) {
   return byId[1];
 }
 
+function writeEPSGrowth(sheet, growthPercentile) {
+  Logger.log(growthPercentile)
+  for (var i = 0; i < growthPercentile.length; i++) {
+    sheet.getRange(13, i + 2).setValue(growthPercentile[i]);
+  }
+}
+
 function writeFundamentals(sheet, epsList, freeCashFlowList, dividendsList, roeList, interestCoverageList, netProfitMarginList) {
   var fundamentals = [epsList, freeCashFlowList, dividendsList, roeList, interestCoverageList, netProfitMarginList];
   var rows = fundamentals.length;
@@ -82,11 +97,21 @@ function writeFundamentals(sheet, epsList, freeCashFlowList, dividendsList, roeL
 
   var replacedfundamentals = [];
   for (var i = 0; i < fundamentals.length; i++) {
-    var replacedResult = replaceToDash(fundamentals[i]);
+    var replacedResult = replaceToDashForList(fundamentals[i]);
     replacedfundamentals.push(replacedResult);
   }
 
   sheet.getRange(5,1,rows,cols).setValues(replacedfundamentals);
+}
+
+function writeBookValue(sheet, bookValueList) {
+  var cols = bookValueList.length;
+
+  var replacedBookValueList = [];
+  for (var i = 0; i < bookValueList.length; i++) {
+    var replacedResult = replaceToDash(bookValueList[i]);
+    sheet.getRange(15,i + 1).setValue(replacedResult);
+  }
 }
 
 function assessFundamentals(sheet, epsList, freeCashFlowList, dividendsList, roeList, interestCoverageList, netProfitMarginList) {
@@ -97,12 +122,12 @@ function assessFundamentals(sheet, epsList, freeCashFlowList, dividendsList, roe
 	var icResult = assessIC(interestCoverageList);
   var netProfitMarginResult = assessNPM(netProfitMarginList);
 
-  sheet.getRange(14,7).setValue(epsResult);
-  sheet.getRange(14,8).setValue(fcfResult);
-  sheet.getRange(14,9).setValue(roeResult);
-  sheet.getRange(14,10).setValue(icResult);
-  sheet.getRange(14,12).setValue(netProfitMarginResult);
-  sheet.getRange(14,13).setValue(dividendsResult);
+  sheet.getRange(19,7).setValue(epsResult);
+  sheet.getRange(19,8).setValue(fcfResult);
+  sheet.getRange(19,9).setValue(roeResult);
+  sheet.getRange(19,10).setValue(icResult);
+  sheet.getRange(19,12).setValue(netProfitMarginResult);
+  sheet.getRange(19,13).setValue(dividendsResult);
 }
 
 function assessEPS(epsList) {
@@ -194,11 +219,30 @@ function getEPS(financials) {
   var colName = extractColName(htmlTag);
   epsList.push(colName);
 
-
-  for(var i = 0; i < epsTags.length; i++) {
+  // Removed TTM by length - 1
+  for(var i = 0; i < epsTags.length - 1; i++) {
     epsList.push(epsTags[i].match(/>(.*?)</)[1]);
   }
   return epsList;
+}
+
+function getEPSGrowth(keyRatio) {
+  var threeYrRegExp = /<td align=\\"right\\" headers=\\"gr-Y9 gr-eps i37\\">(.*?)</g;
+  var fiveYrRegExp = /<td align=\\"right\\" headers=\\"gr-Y9 gr-eps i38\\">(.*?)</g;
+  var tenYrRegExp = /<td align=\\"right\\" headers=\\"gr-Y9 gr-eps i39\\">(.*?)</g;
+
+  var threeYr = keyRatio.match(threeYrRegExp)[0];
+  var fiveYr = keyRatio.match(fiveYrRegExp)[0];
+  var tenYr = keyRatio.match(tenYrRegExp)[0];
+  Logger.log(tenYr)
+
+  var growthTags = [threeYr, fiveYr, tenYr];
+  var growthPercentileList = [];
+  for(var i = 0; i < growthTags.length -1; i++) {
+    var replacedResult = replaceToDash(growthTags[i]);
+    growthPercentileList.push(replacedResult.match(/>(.*?)</)[1]);
+  }
+  return growthPercentileList;
 }
 
 function getFreeCashFlow(financials) {
@@ -209,7 +253,8 @@ function getFreeCashFlow(financials) {
   var htmlTag = financials.match(colNameRegExp)[0];
   var colName = extractColName(htmlTag);
   fcfList.push(colName);
-  for(var i = 0; i < fcfTags.length; i++) {
+  // Removed TTM by length - 1
+  for(var i = 0; i < fcfTags.length -1; i++) {
     fcfList.push(fcfTags[i].match(/>(.*?)</)[1]);
   }
   return fcfList;
@@ -223,10 +268,26 @@ function getDividends(financials) {
   var htmlTag = financials.match(colNameRegExp)[0];
   var colName = extractColName(htmlTag);
   dividendsList.push(colName);
-  for(var i = 0; i < dividendsTags.length; i++) {
+  // Removed TTM by length - 1
+  for(var i = 0; i < dividendsTags.length -1; i++) {
     dividendsList.push(dividendsTags[i].match(/>(.*?)</)[1]);
   }
   return dividendsList;
+}
+
+function getBookValue(financials) {
+  var bookValueRegExp = /<td align=\\"right\\" headers=\\"Y[0-9]{1,2} i8\\">(.*?)</g;
+  var colNameRegExp = /<th class=\\"row_lbl\\" scope=\\"row\\" id=\\"i8\\">(.*?)<\\\/th>/g;
+  var bookValueTags = financials.match(bookValueRegExp);
+  var bookValueList = [];
+  var htmlTag = financials.match(colNameRegExp)[0];
+  var colName = extractColName(htmlTag);
+  bookValueList.push(colName);
+  // Removed TTM by length - 1
+  for(var i = 0; i < bookValueTags.length -1; i++) {
+    bookValueList.push(bookValueTags[i].match(/>(.*?)</)[1]);
+  }
+  return bookValueList;
 }
 
 function getROE(keyRatio) {
@@ -237,7 +298,8 @@ function getROE(keyRatio) {
   var htmlTag = keyRatio.match(colNameRegExp)[0];
   var colName = extractColName(htmlTag);
   roeList.push(colName);
-  for(var i = 0; i < roeTags.length; i++) {
+  // Removed TTM by length - 1
+  for(var i = 0; i < roeTags.length -1; i++) {
     roeList.push(roeTags[i].match(/>(.*?)</)[1]);
   }
   return roeList;
@@ -251,7 +313,8 @@ function getInterestCoverage(keyRatio) {
   var htmlTag = keyRatio.match(colNameRegExp)[0];
   var colName = extractColName(htmlTag);
   icList.push(colName);
-  for(var i = 0; i < icTags.length; i++) {
+  // Removed TTM by length - 1
+  for(var i = 0; i < icTags.length -1; i++) {
     icList.push(icTags[i].match(/>(.*?)</)[1]);
   }
   return icList;
@@ -265,7 +328,8 @@ function getNetProfitMargin(keyRatio) {
   var htmlTag = keyRatio.match(colNameRegExp)[0];
   var colName = extractColName(htmlTag);
   npmList.push(colName);
-  for(var i = 0; i < npmTags.length; i++) {
+  // Removed TTM by length - 1
+  for(var i = 0; i < npmTags.length -1; i++) {
     npmList.push(npmTags[i].match(/>(.*?)</)[1]);
   }
   return npmList;
