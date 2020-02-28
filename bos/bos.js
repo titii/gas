@@ -335,4 +335,20 @@ function getNetProfitMargin(keyRatio) {
   return npmList;
 }
 
+function clearAll() {
+  var sheet = SpreadsheetApp.getActiveSheet(); 
+  var target0 = sheet.getRange("B2:B3");
+  var target1 = sheet.getRange("A5:K10");
+  var target2 = sheet.getRange("B13:D13");
+  var target3 = sheet.getRange("A15:K15");
+  var target4 = sheet.getRange("C19:C19");
+  var target5 = sheet.getRange("G19:P19");
+  target0.clearContent();
+  target1.clearContent();
+  target2.clearContent();
+  target3.clearContent();
+  target4.clearContent();
+  target5.clearContent();
+}
+
 
