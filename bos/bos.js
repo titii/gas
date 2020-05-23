@@ -32,6 +32,71 @@ function myFunction() {
   writeEPSGrowth(sheet, growthPercentile);
   writeBookValue(sheet, bookValueList);
   assessFundamentals(sheet, epsList, freeCashFlowList, dividendsList, roeList, interestCoverageList, netProfitMarginList);
+  collectAssessedData(sheet);
+}
+
+function addShoppingList() {
+  var sheet = SpreadsheetApp.getActiveSheet();
+  var ticker = sheet.getRange(2, 2).getValue().toString();
+  var result = sheet.getRange("A20:AQ20").getValues();
+  var shoppingList = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('ShoppingList');
+  var row = findRow(shoppingList, ticker);
+  if (row) { // 行が見つかったら更新
+    var range = shoppingList.getRange("A" + row + ":" + "AQ" + row);
+    range.setValues(result);
+  } else { // 行が見つからなかったら新しくデータを挿入
+    var lastrow = shoppingList.getLastRow()+1;
+    shoppingList.appendRow(result[0]);
+  }
+}
+
+function clearAll() {
+  var sheet = SpreadsheetApp.getActiveSheet(); 
+  var target0 = sheet.getRange("B2:B3");
+  var target1 = sheet.getRange("A6:K11");
+  var target2 = sheet.getRange("B14:D14");
+  var target3 = sheet.getRange("A16:K16");
+  var target4 = sheet.getRange("C20:C20");
+  var target5 = sheet.getRange("G20:P20");
+  target0.clearContent();
+  target1.clearContent();
+  target2.clearContent();
+  target3.clearContent();
+  target4.clearContent();
+  target5.clearContent();
+}
+
+function updateDataForDbSheet(dbSheet, ticker, score) {
+  var values = dbSheet.getDataRange().getValues();
+
+  for (var i = values.length - 1; i > 0; i--) {
+    if (values[i][0] === ticker) {
+      var row = Number(i + 1);// 配列のキーは0から始まり、行数は1から始まるのでズレを直す
+      var sum = parseFloat(values[i][1]) + parseFloat(score) + 3.0;
+      var count = values[i][2] + 1;
+      var avg = sum / count;
+      return [ticker, avg, count, row];
+    }
+  }
+  return [];
+}
+
+
+function collectAssessedData(sheet) {
+  var db = SpreadsheetApp.openById("1jg6nrhMRbzNLoO90LzSogaqjlOm9CBaLaCgk9rpWG0k");
+  var dbSheet = db.getSheetByName('hist');
+  var dat = dbSheet.getDataRange().getValues();
+  Utilities.sleep(1 * 1000);
+  var tickerFromActiveSheet = sheet.getRange(2, 2).getValue().toString();
+  var scoreFromActiveSheet = sheet.getRange(20, 2).getValue().toString();
+
+  var targetRow = updateDataForDbSheet(dbSheet, tickerFromActiveSheet, scoreFromActiveSheet);
+
+  if (targetRow.length > 0) {
+    dbSheet.getRange(targetRow[3], 1, 1, targetRow.length).setValues([targetRow]);
+  } else {
+    dbSheet.appendRow([tickerFromActiveSheet, scoreFromActiveSheet, 1]);
+  }
 }
 
 function getStockExchange(sheet) {
@@ -93,7 +158,6 @@ function getById(ticker, stockExchange) {
 }
 
 function writeEPSGrowth(sheet, growthPercentile) {
-  Logger.log(growthPercentile)
   for (var i = 0; i < growthPercentile.length; i++) {
     sheet.getRange(14, i + 2).setValue(growthPercentile[i]);
   }
@@ -341,6 +405,18 @@ function getNetProfitMargin(keyRatio) {
     npmList.push(npmTags[i].match(/>(.*?)</)[1]);
   }
   return npmList;
+}
+
+function findRow(sheet, ticker) {
+  var values = sheet.getDataRange().getValues();
+
+  for (var i = values.length - 1; i > 0; i--) {
+    if (values[i][0] === ticker) {
+      var row = i + 1;// 配列のキーは0から始まり、行数は1から始まるのでズレを直す
+      return i + 1;
+    }
+  }
+  return false;
 }
 
 function clearAll() {
