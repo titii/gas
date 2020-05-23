@@ -2,6 +2,7 @@ var no = "なし　No";
 var yes = "ある　Yes";
 var intCovRatioValues = [">  10", "> 4"];
 var netProfitMarginValues = [">20%", ">10%"];
+var searchError = "エラーです。次のことを順に確認してください。\\n TickerやExchangesを変更した後フォーカスを外しましたか？ \\n TickerやExchangesは正確ですが？ \\n モーニングスターにデータはありますか？"
 
 
 function myFunction() {
@@ -9,10 +10,13 @@ function myFunction() {
   var ticker = sheet.getRange(2, 2).getValue().toString();
   var stockExchange = getStockExchange(sheet);
   var byId = getById(ticker, stockExchange);
+  var financials;
+  var keyRatio;
   var financialsUrl = "https://financials.morningstar.com/finan/financials/getFinancePart.html?&callback=jsonp1580192904311&t="+ byId +"&region=usa&culture=en-US&cur=&order=asc&_=1580192905566"
-  var financials = UrlFetchApp.fetch(financialsUrl).getContentText();
+  financials = UrlFetchApp.fetch(financialsUrl).getContentText();
   var keyRatioUrl = "https://financials.morningstar.com/finan/financials/getKeyStatPart.html?&callback=jsonp1579473219364&t="+ byId +"&region=usa&culture=en-US&cur=&order=asc&_=1579473220658";
-  var keyRatio = UrlFetchApp.fetch(keyRatioUrl).getContentText();
+  keyRatio = UrlFetchApp.fetch(keyRatioUrl).getContentText();
+  
 
   var epsList = getEPS(financials);
   var freeCashFlowList = getFreeCashFlow(financials);
@@ -76,10 +80,15 @@ function replaceToFloat(str) {
 }
 
 function getById(ticker, stockExchange) {
+  var byId = new Array();
+  try {
   var mStarQuoteUrl = "https://www.morningstar.com/stocks/"+ stockExchange +"/"+ ticker.toLowerCase() +"/quote";
   var mStarQuote = UrlFetchApp.fetch(mStarQuoteUrl).getContentText();
   var byIdRegExp = /byId:{\"(.+)\":.}/;
   var byId = mStarQuote.match(byIdRegExp)
+  } catch (e) {
+    Browser.msgBox(searchError);
+  }
   return byId[1];
 }
 
