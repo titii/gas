@@ -73,9 +73,10 @@ function updateDataForDbSheet(dbSheet, ticker, score) {
   for (var i = values.length - 1; i > 0; i--) {
     if (values[i][0] === ticker) {
       var row = Number(i + 1);// 配列のキーは0から始まり、行数は1から始まるのでズレを直す
-      var sum = parseFloat(values[i][1]) + parseFloat(score) + 3.0;
+      var addedThreeToScore = parseFloat(score) + 3.0;
+      var sum = parseFloat(values[i][1]) + addedThreeToScore;
       var count = values[i][2] + 1;
-      var avg = sum / count;
+      var avg = sum / 2;
       return [ticker, avg, count, row];
     }
   }
