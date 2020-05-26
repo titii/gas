@@ -6,6 +6,7 @@ var searchError = "エラーです。次のことを順に確認してくださ�
 
 
 function myFunction() {
+  clearData();
   var sheet = SpreadsheetApp.getActiveSheet(); 
   var ticker = sheet.getRange(2, 2).getValue().toString();
   var stockExchange = getStockExchange(sheet);
@@ -95,7 +96,8 @@ function collectAssessedData(sheet) {
   if (targetRow.length > 0) {
     dbSheet.getRange(targetRow[3], 1, 1, targetRow.length).setValues([targetRow]);
   } else {
-    dbSheet.appendRow([tickerFromActiveSheet, scoreFromActiveSheet, 1]);
+    var score = Number(scoreFromActiveSheet) + 3;
+    dbSheet.appendRow([tickerFromActiveSheet, score, 1]);
   }
 }
 
@@ -204,7 +206,7 @@ function assessFundamentals(sheet, epsList, freeCashFlowList, dividendsList, roe
 }
 
 function assessEPS(epsList) {
-  for(var i = 0; i < epsList.length; i++) {
+  for(var i = 1; i < epsList.length; i++) {
     if(replaceToFloat(epsList[i]) < 0) {
         return no;
       }
@@ -213,7 +215,7 @@ function assessEPS(epsList) {
 }
 
 function assessFreeCashFlow(freeCashFlowList) {
-  for(var i = 0; i < freeCashFlowList.length; i++) {
+  for(var i = 1; i < freeCashFlowList.length; i++) {
     if(replaceToNumber(freeCashFlowList[i]) < 0) {
         return no;
       }
@@ -223,7 +225,7 @@ function assessFreeCashFlow(freeCashFlowList) {
 
 function assessDividends(dividendsList) {
   var dividends = 0;
-  for(var i = 0; i < dividendsList.length; i++) {
+  for(var i = 1; i < dividendsList.length; i++) {
     var value = replaceToFloat(dividendsList[i]);
     if(value < 0) {
         dividends = 0;
@@ -241,7 +243,7 @@ function assessDividends(dividendsList) {
 }
 
 function assessROE(roeList) {
-  for(var i = 0; i < roeList.length; i++) {
+  for(var i = 1; i < roeList.length; i++) {
     if(replaceToFloat(roeList[i]) < 15) {
         return no;
       }
@@ -251,7 +253,7 @@ function assessROE(roeList) {
 
 function assessIC(interestCoverageList) {
   var ic = ">  10";
-  for(var i = 0; i < interestCoverageList.length; i++) {
+  for(var i = 1; i < interestCoverageList.length; i++) {
     if(interestCoverageList[i] === "&mdash;" || replaceToFloat(interestCoverageList[i]) > 10) {
       ic = ">  10";
     }
@@ -268,17 +270,17 @@ function assessIC(interestCoverageList) {
 
 function assessNPM(netProfitMarginList) {
   var npm = ">20%";
-  for(var i = 0; i < netProfitMarginList.length; i++) {
-    if(replaceToFloat(netProfitMarginList[i]) > 20) {
+
+  for(var i = 1; i < netProfitMarginList.length; i++) {
+    if(npm !== no && npm !== ">10%" && replaceToFloat(netProfitMarginList[i]) > 20) {
       npm = ">20%";
     }
-    else if(netProfitMarginList[i] > 10) {
+    else if(npm !== no && replaceToFloat(netProfitMarginList[i]) > 10) {
       npm = ">10%";
     }
     else {
       npm = no;
     }
-
   }
   return npm;
 }
@@ -417,6 +419,20 @@ function findRow(sheet, ticker) {
     }
   }
   return false;
+}
+
+function clearData() {
+  var sheet = SpreadsheetApp.getActiveSheet(); 
+  var target1 = sheet.getRange("A6:K11");
+  var target2 = sheet.getRange("B14:D14");
+  var target3 = sheet.getRange("A16:K16");
+  var target4 = sheet.getRange("C20:C20");
+  var target5 = sheet.getRange("G20:P20");
+  target1.clearContent();
+  target2.clearContent();
+  target3.clearContent();
+  target4.clearContent();
+  target5.clearContent();
 }
 
 function clearAll() {
