@@ -451,3 +451,14 @@ function clearAll() {
   target4.clearContent();
   target5.clearContent();
 }
+
+// ShoppingList
+function getCurrentPrices() {
+  var sheet = SpreadsheetApp.getActiveSheet(); 
+  var tickers = sheet.getDataRange().getValues();
+  for (var i = tickers.length - 2; i > 1; i--) {
+    var ticker = tickers[i][0];
+    var row = i + 2;
+    sheet.getRange(row, 4).setFormula('=GOOGLEFINANCE(A' + row +', "price")');
+  }
+}
