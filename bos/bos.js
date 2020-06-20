@@ -139,6 +139,10 @@ function replaceToDash(string) {
   return string.replace("&mdash;", "-");
 }
 
+function replaceDashToZero(string) {
+  return string.replace("&mdash;", "0");
+}
+
 function replaceToNumber(str) {
   return Number(str.replace(/,/g, ''));
 }
@@ -462,3 +466,492 @@ function getCurrentPrices() {
     sheet.getRange(row, 4).setFormula('=GOOGLEFINANCE(A' + row +', "price")');
   }
 }
+
+// BS
+function writeBSItems() {
+  var sheet = SpreadsheetApp.getActiveSheet(); 
+  var ticker = sheet.getRange(2, 2).getValue().toString();
+  var stockExchange = getStockExchange(sheet);
+  var byId = getById(ticker, stockExchange);
+  var keyRatio;
+  var keyRatioUrl = "https://financials.morningstar.com/finan/financials/getKeyStatPart.html?&callback=jsonp1579473219364&t="+ byId +"&region=usa&culture=en-US&cur=&order=asc&_=1579473220658";
+  keyRatio = UrlFetchApp.fetch(keyRatioUrl).getContentText();
+  
+  getBSNestedList(sheet, keyRatio)
+}
+
+function getBSNestedList(sheet, keyRatio) {
+  //assets
+  var cashEtcList = getCashData(keyRatio);
+  var accountsReceivableList = getAccountsReceivableData(keyRatio);
+  var inventoryList = getInventoryData(keyRatio)
+  var otherCurrentAssetList = getOtherCurrentAssetsData(keyRatio)
+  var netPPAndEList = getNetPPAndEData(keyRatio)
+  var intangiblesList = getIntangiblesData(keyRatio)
+  var otherLongTermAssetsList = getOtherLongTermAssetsData(keyRatio)
+
+  //Liabilities
+  var accountsPayableList = getAccountsPayableData(keyRatio)
+  var shortTermDebtList = getShortTermDebtData(keyRatio)
+  var taxesPayableList = getTaxesPayableData(keyRatio)
+  var accruedLiabilitiesList = getAccruedLiabilitiesData(keyRatio)
+  var otherShortTermLiabilitiesList = getOtherShortTermLiabilitiesData(keyRatio)
+  var longTermDebtList = getLongTermDebtData(keyRatio)
+  var otherLongTermLiabilitiesList = getOtherLongTermLiabilitiesData(keyRatio)
+  var totalStockholdersEquitysList = getTotalStockholdersEquitysData(keyRatio)
+
+  var assetsItemName = [otherLongTermAssetsList[0], intangiblesList[0], netPPAndEList[0], otherCurrentAssetList[0], inventoryList[0], accountsReceivableList[0], cashEtcList[0]];
+  var pastAssets = [otherLongTermAssetsList[1], intangiblesList[1], netPPAndEList[1], otherCurrentAssetList[1], inventoryList[1], accountsReceivableList[1], cashEtcList[1]];
+  var latestAssets = [otherLongTermAssetsList[2], intangiblesList[2], netPPAndEList[2], otherCurrentAssetList[2], inventoryList[2], accountsReceivableList[2], cashEtcList[2]];
+
+  var liabilitiesItemName =[totalStockholdersEquitysList[0],otherLongTermLiabilitiesList[0],longTermDebtList[0],otherShortTermLiabilitiesList[0],accruedLiabilitiesList[0],taxesPayableList[0],shortTermDebtList[0],accountsPayableList[0]];
+  var pastLiabilities =[totalStockholdersEquitysList[1],otherLongTermLiabilitiesList[1],longTermDebtList[1],otherShortTermLiabilitiesList[1],accruedLiabilitiesList[1],taxesPayableList[1],shortTermDebtList[1],accountsPayableList[1]];
+  var latestLiabilities =[totalStockholdersEquitysList[2],otherLongTermLiabilitiesList[2],longTermDebtList[2],otherShortTermLiabilitiesList[2],accruedLiabilitiesList[2],taxesPayableList[2],shortTermDebtList[2],accountsPayableList[2]];
+
+  writeBSData(sheet, "past", assetsItemName,liabilitiesItemName,pastAssets,pastLiabilities);
+  writeBSData(sheet, "latest", assetsItemName,liabilitiesItemName,latestAssets,latestLiabilities);
+
+  var assetsColorScheme = ['#0041C2','#2554C7', '#1569C7', '#3090C7', '#659EC7', '#87AFC7', '#95B9C7'];
+  generateGraph('資産', [15,2,0,0], 'left', 'D6:J7', assetsColorScheme);
+  generateGraph('資産', [30,2,0,0], 'left', 'D10:J11', assetsColorScheme);
+
+  var liabilitiesColorScheme = ['#728C00','#FFA62F','#FBB117','#E7A1B0','#F9A7B0','#FAAFBA','#FBBBB9','#FFDFDD']
+  generateGraph('負債', [15,6,0,0], 'right', 'D8:K9', liabilitiesColorScheme);
+  generateGraph('負債', [30,6,0,0], 'right', 'D12:K13', liabilitiesColorScheme);
+}
+
+function generateGraph(title, position, legendPosition, targetRange, colors) {
+  var sheet = SpreadsheetApp.getActiveSheet();
+  var range = sheet.getRange(targetRange)
+  var chart = sheet.newChart()
+    .addRange(range)
+    .setPosition(position[0], position[1], position[2], position[3])
+    .asColumnChart()
+    .setNumHeaders(1)
+    .setOption('title', title)
+    .setOption('legend.position', legendPosition)
+    .setOption('width', 400)
+    .setOption('height', 300)
+    .setOption('isStacked', 'percent' )
+    .setOption('colors', colors)
+    
+  sheet.insertChart(chart.build());
+}
+
+function writeBSData(sheet, target, assetsItem, liabilitiesItem, assets, liabilities) {
+  if (target === "past") {
+    for (var i = 0; i < assets.length; i++) {
+      sheet.getRange(6,i + 4).setValue(assetsItem[i]);
+      sheet.getRange(7,i + 4).setValue(assets[i]);
+    }
+    for (var i = 0; i < liabilities.length; i++) {
+      sheet.getRange(8,i + 4).setValue(liabilitiesItem[i]);
+      sheet.getRange(9,i + 4).setValue(liabilities[i]);
+    }
+  } else {
+    for (var i = 0; i < assets.length; i++) {
+      sheet.getRange(10,i + 4).setValue(assetsItem[i]);
+      sheet.getRange(11,i + 4).setValue(assets[i]);
+    }
+    for (var i = 0; i < liabilities.length; i++) {
+      sheet.getRange(12,i + 4).setValue(liabilitiesItem[i]);
+      sheet.getRange(13,i + 4).setValue(liabilities[i]);
+    }
+  }
+
+}
+
+function getCashData(keyRatio) {
+  var cashRegExp = /<td align=\\"right\\" headers=\\"fh-Y[0-9]{1,2} fh-balsheet i45\\">(.*?)</g;
+  var cashTags = keyRatio.match(cashRegExp);
+  var cashList = [];
+  var itemName = "現金等";
+  cashList.push(itemName);
+
+  for(var i = 9; i < cashTags.length; i++) {
+    cashList.push(replaceDashToZero(cashTags[i].match(/>(.*?)</)[1]));
+  }
+  return cashList;
+}
+
+function getAccountsReceivableData(keyRatio) {
+  var accountsReceivableRegExp = /<td align=\\"right\\" headers=\\"fh-Y[0-9]{1,2} fh-balsheet i46\\">(.*?)</g;
+  var accountsReceivableTags = keyRatio.match(accountsReceivableRegExp);
+  var accountsReceivableList = [];
+  var itemName = "売掛金";
+  accountsReceivableList.push(itemName);
+
+  for(var i = 9; i < accountsReceivableTags.length; i++) {
+    accountsReceivableList.push(replaceDashToZero(accountsReceivableTags[i].match(/>(.*?)</)[1]));
+  }
+  return accountsReceivableList;
+}
+
+function getInventoryData(keyRatio) {
+  var inventoryRegExp = /<td align=\\"right\\" headers=\\"fh-Y[0-9]{1,2} fh-balsheet i47\\">(.*?)</g;
+  var inventoryTags = keyRatio.match(inventoryRegExp);
+  var inventoryList = [];
+  var itemName = "棚卸資産";
+  inventoryList.push(itemName);
+
+  for(var i = 9; i < inventoryTags.length; i++) {
+    inventoryList.push(replaceDashToZero(inventoryTags[i].match(/>(.*?)</)[1]));
+  }
+  return inventoryList;
+}
+
+function getOtherCurrentAssetsData(keyRatio) {
+  var otherCurrentAssetsRegExp = /<td align=\\"right\\" headers=\\"fh-Y[0-9]{1,2} fh-balsheet i48\\">(.*?)</g;
+  var otherCurrentAssetsTags = keyRatio.match(otherCurrentAssetsRegExp);
+  var otherCurrentAssetsList = [];
+  var itemName = "その他流動資産";
+  otherCurrentAssetsList.push(itemName);
+
+  for(var i = 9; i < otherCurrentAssetsTags.length; i++) {
+    otherCurrentAssetsList.push(replaceDashToZero(otherCurrentAssetsTags[i].match(/>(.*?)</)[1]));
+  }
+  return otherCurrentAssetsList;
+}
+
+function getNetPPAndEData(keyRatio) {
+  var otherCurrentAssetsRegExp = /<td align=\\"right\\" headers=\\"fh-Y[0-9]{1,2} fh-balsheet i50\\">(.*?)</g;
+  var otherCurrentAssetsTags = keyRatio.match(otherCurrentAssetsRegExp);
+  var otherCurrentAssetsList = [];
+  var itemName = "有形固定資産";
+  otherCurrentAssetsList.push(itemName);
+
+  for(var i = 9; i < otherCurrentAssetsTags.length; i++) {
+    otherCurrentAssetsList.push(replaceDashToZero(otherCurrentAssetsTags[i].match(/>(.*?)</)[1]));
+  }
+  return otherCurrentAssetsList;
+}
+
+function getIntangiblesData(keyRatio) {
+  var intangiblesRegExp = /<td align=\\"right\\" headers=\\"fh-Y[0-9]{1,2} fh-balsheet i51\\">(.*?)</g;
+  var intangiblesTags = keyRatio.match(intangiblesRegExp);
+  var intangiblesList = [];
+  var itemName = "無形資産";
+  intangiblesList.push(itemName);
+
+  for(var i = 9; i < intangiblesTags.length; i++) {
+    intangiblesList.push(replaceDashToZero(intangiblesTags[i].match(/>(.*?)</)[1]));
+  }
+  return intangiblesList;
+}
+
+function getOtherLongTermAssetsData(keyRatio) {
+  var otherLongTermAssetsRegExp = /<td align=\\"right\\" headers=\\"fh-Y[0-9]{1,2} fh-balsheet i52\\">(.*?)</g;
+  var otherLongTermAssetsTags = keyRatio.match(otherLongTermAssetsRegExp);
+  var otherLongTermAssetsList = [];
+  var itemName = "その他固定資産";
+  otherLongTermAssetsList.push(itemName);
+
+  for(var i = 9; i < otherLongTermAssetsTags.length; i++) {
+    otherLongTermAssetsList.push(replaceDashToZero(otherLongTermAssetsTags[i].match(/>(.*?)</)[1]));
+  }
+  return otherLongTermAssetsList;
+}
+
+function getAccountsPayableData(keyRatio) {
+  var accountsPayableRegExp = /<td align=\\"right\\" headers=\\"fh-Y[0-9]{1,2} fh-balsheet i54\\">(.*?)</g;
+  var accountsPayableTags = keyRatio.match(accountsPayableRegExp);
+  var accountsPayableList = [];
+  var itemName = "未払金";
+  accountsPayableList.push(itemName);
+
+  for(var i = 9; i < accountsPayableTags.length; i++) {
+    accountsPayableList.push(replaceDashToZero(accountsPayableTags[i].match(/>(.*?)</)[1]));
+  }
+  return accountsPayableList;
+}
+
+function getShortTermDebtData(keyRatio) {
+  var shortTermDebtRegExp = /<td align=\\"right\\" headers=\\"fh-Y[0-9]{1,2} fh-balsheet i55\\">(.*?)</g;
+  var shortTermDebtTags = keyRatio.match(shortTermDebtRegExp);
+  var shortTermDebtList = [];
+  var itemName = "短期借入金";
+  shortTermDebtList.push(itemName);
+
+  for(var i = 9; i < shortTermDebtTags.length; i++) {
+    shortTermDebtList.push(replaceDashToZero(shortTermDebtTags[i].match(/>(.*?)</)[1]));
+  }
+  return shortTermDebtList;
+}
+
+function getTaxesPayableData(keyRatio) {
+  var taxesPayableRegExp = /<td align=\\"right\\" headers=\\"fh-Y[0-9]{1,2} fh-balsheet i56\\">(.*?)</g;
+  var taxesPayableTags = keyRatio.match(taxesPayableRegExp);
+  var taxesPayableList = [];
+  var itemName = "短期借入金";
+  taxesPayableList.push(itemName);
+
+  for(var i = 9; i < taxesPayableTags.length; i++) {
+    taxesPayableList.push(replaceDashToZero(taxesPayableTags[i].match(/>(.*?)</)[1]));
+  }
+  return taxesPayableList;
+}
+
+function getTaxesPayableData(keyRatio) {
+  var taxesPayableRegExp = /<td align=\\"right\\" headers=\\"fh-Y[0-9]{1,2} fh-balsheet i56\\">(.*?)</g;
+  var taxesPayableTags = keyRatio.match(taxesPayableRegExp);
+  var taxesPayableList = [];
+  var itemName = "未払税金";
+  taxesPayableList.push(itemName);
+
+  for(var i = 9; i < taxesPayableTags.length; i++) {
+    taxesPayableList.push(replaceDashToZero(taxesPayableTags[i].match(/>(.*?)</)[1]));
+  }
+  return taxesPayableList;
+}
+
+function getAccruedLiabilitiesData(keyRatio) {
+  var accruedLiabilitiesRegExp = /<td align=\\"right\\" headers=\\"fh-Y[0-9]{1,2} fh-balsheet i57\\">(.*?)</g;
+  var accruedLiabilitiesTags = keyRatio.match(accruedLiabilitiesRegExp);
+  var accruedLiabilitiesList = [];
+  var itemName = "未払費用";
+  accruedLiabilitiesList.push(itemName);
+
+  for(var i = 9; i < accruedLiabilitiesTags.length; i++) {
+    accruedLiabilitiesList.push(replaceDashToZero(accruedLiabilitiesTags[i].match(/>(.*?)</)[1]));
+  }
+  return accruedLiabilitiesList;
+}
+
+function getOtherShortTermLiabilitiesData(keyRatio) {
+  var otherShortTermLiabilitiesRegExp = /<td align=\\"right\\" headers=\\"fh-Y[0-9]{1,2} fh-balsheet i58\\">(.*?)</g;
+  var otherShortTermLiabilitiesTags = keyRatio.match(otherShortTermLiabilitiesRegExp);
+  var otherShortTermLiabilitiesList = [];
+  var itemName = "その他流動負債";
+  otherShortTermLiabilitiesList.push(itemName);
+
+  for(var i = 9; i < otherShortTermLiabilitiesTags.length; i++) {
+    otherShortTermLiabilitiesList.push(replaceDashToZero(otherShortTermLiabilitiesTags[i].match(/>(.*?)</)[1]));
+  }
+  return otherShortTermLiabilitiesList;
+}
+
+function getLongTermDebtData(keyRatio) {
+  var longTermDebtRegExp = /<td align=\\"right\\" headers=\\"fh-Y[0-9]{1,2} fh-balsheet i60\\">(.*?)</g;
+  var longTermDebtTags = keyRatio.match(longTermDebtRegExp);
+  var longTermDebtList = [];
+  var itemName = "長期借入金";
+  longTermDebtList.push(itemName);
+
+  for(var i = 9; i < longTermDebtTags.length; i++) {
+    longTermDebtList.push(replaceDashToZero(longTermDebtTags[i].match(/>(.*?)</)[1]));
+  }
+  return longTermDebtList;
+}
+
+function getOtherLongTermLiabilitiesData(keyRatio) {
+  var otherLongTermLiabilitiesRegExp = /<td align=\\"right\\" headers=\\"fh-Y[0-9]{1,2} fh-balsheet i61\\">(.*?)</g;
+  var otherLongTermLiabilitiesTags = keyRatio.match(otherLongTermLiabilitiesRegExp);
+  var otherLongTermLiabilitiesList = [];
+  var itemName = "その他固定負債";
+  otherLongTermLiabilitiesList.push(itemName);
+
+  for(var i = 9; i < otherLongTermLiabilitiesTags.length; i++) {
+    otherLongTermLiabilitiesList.push(replaceDashToZero(otherLongTermLiabilitiesTags[i].match(/>(.*?)</)[1]));
+  }
+  return otherLongTermLiabilitiesList;
+}
+
+function getTotalStockholdersEquitysData(keyRatio) {
+  var totalStockholdersEquitysRegExp = /<td align=\\"right\\" headers=\\"fh-Y[0-9]{1,2} fh-balsheet i63\\">(.*?)</g;
+  var totalStockholdersEquitysTags = keyRatio.match(totalStockholdersEquitysRegExp);
+  var totalStockholdersEquitysList = [];
+  var itemName = "資本金";
+  totalStockholdersEquitysList.push(itemName);
+
+  for(var i = 9; i < totalStockholdersEquitysTags.length; i++) {
+    totalStockholdersEquitysList.push(replaceDashToZero(totalStockholdersEquitysTags[i].match(/>(.*?)</)[1]));
+  }
+  return totalStockholdersEquitysList;
+}
+
+
+// P/L
+function writePLItems() {
+  var sheet = SpreadsheetApp.getActiveSheet(); 
+  var ticker = sheet.getRange(2, 2).getValue().toString();
+  var stockExchange = getStockExchange(sheet);
+  var byId = getById(ticker, stockExchange);
+  var keyRatio;
+  var keyRatioUrl = "https://financials.morningstar.com/finan/financials/getKeyStatPart.html?&callback=jsonp1579473219364&t="+ byId +"&region=usa&culture=en-US&cur=&order=asc&_=1579473220658";
+  keyRatio = UrlFetchApp.fetch(keyRatioUrl).getContentText();
+  getPLNestedList(sheet, keyRatio)
+}
+
+function getPLNestedList(sheet, keyRatio) {
+  //Profit, Cost
+  var ebtMarginList = getEBTMargin(keyRatio);
+  var otherCostList = getOtherCost(keyRatio);
+  var rdList = getRD(keyRatio);
+  var sgaList = getSGA(keyRatio)
+  var cogsList = getCOGS(keyRatio)
+
+  //Revenue
+  var netIntIncAndOtherList = getNetIntIncAndOther(keyRatio);
+  var revenue = calculateRevenue(netIntIncAndOtherList)
+
+  var pcItemName = [ebtMarginList[0], otherCostList[0], rdList[0], sgaList[0], cogsList[0]];
+  var pastPC = [ebtMarginList[1], otherCostList[1], rdList[1], sgaList[1], cogsList[1]];
+  var latestPC = [ebtMarginList[2], otherCostList[2], rdList[2], sgaList[2], cogsList[2]];
+
+  var salesItemName = [netIntIncAndOtherList[0],revenue[0]];
+  var pastSales = [netIntIncAndOtherList[1],revenue[1]];
+  var latestSales = [netIntIncAndOtherList[2],revenue[2]];
+
+  writePLData(sheet, "past", pcItemName, salesItemName, pastPC, pastSales);
+  writePLData(sheet, "latest", pcItemName,salesItemName,latestPC,latestSales);
+
+  var pcColorScheme = ['#A1C935','#F88017', '#FF7F50', '#F88158', '#F9966B'];
+  generateGraph('費用・利益', [15,2,0,0], 'left', 'D6:J7', pcColorScheme);
+  generateGraph('費用・利益', [30,2,0,0], 'left', 'D10:J11', pcColorScheme);
+
+  var salesColorScheme = ['#9CB071','#8BB381'];
+  generateGraph('収益', [15,6,0,0], 'right', 'D8:K9', salesColorScheme);
+  generateGraph('収益', [30,6,0,0], 'right', 'D12:K13', salesColorScheme);
+}
+
+function writePLData(sheet, target, pcItem, salesItem, pc, sales) {
+  if (target === "past") {
+    for (var i = 0; i < pc.length; i++) {
+      sheet.getRange(6,i + 4).setValue(pcItem[i]);
+      sheet.getRange(7,i + 4).setValue(pc[i]);
+    }
+    for (var i = 0; i < sales.length; i++) {
+      sheet.getRange(8,i + 4).setValue(salesItem[i]);
+      sheet.getRange(9,i + 4).setValue(sales[i]);
+    }
+  } else {
+    for (var i = 0; i < pc.length; i++) {
+      sheet.getRange(10,i + 4).setValue(pcItem[i]);
+      sheet.getRange(11,i + 4).setValue(pc[i]);
+    }
+    for (var i = 0; i < sales.length; i++) {
+      sheet.getRange(12,i + 4).setValue(salesItem[i]);
+      sheet.getRange(13,i + 4).setValue(sales[i]);
+    }
+  }
+
+}
+
+function getEBTMargin(keyRatio) {
+  var ebtMarginRegExp = /<td align=\\"right\\" headers=\\"pr-Y[0-9]{1,2} pr-margins i20\\">(.*?)</g;
+  var ebtMarginTags = keyRatio.match(ebtMarginRegExp);
+  var ebtMarginList = [];
+  var itemName = "税引き前利益";
+  ebtMarginList.push(itemName);
+
+  for(var i = 9; i < ebtMarginTags.length; i++) {
+    ebtMarginList.push(replaceDashToZero(ebtMarginTags[i].match(/>(.*?)</)[1]));
+  }
+  return ebtMarginList;
+}
+
+function getOtherCost(keyRatio) {
+  var otherRegExp = /<td align=\\"right\\" headers=\\"pr-Y[0-9]{1,2} pr-margins i17\\">(.*?)</g;
+  var otherTags = keyRatio.match(otherRegExp);
+  var otherList = [];
+  var itemName = "その他";
+  otherList.push(itemName);
+
+  for(var i = 9; i < otherTags.length; i++) {
+    otherList.push(replaceDashToZero(otherTags[i].match(/>(.*?)</)[1]));
+  }
+  return otherList;
+}
+
+function getRD(keyRatio) {
+  var rdRegExp = /<td align=\\"right\\" headers=\\"pr-Y[0-9]{1,2} pr-margins i16\\">(.*?)</g;
+  var rdTags = keyRatio.match(rdRegExp);
+  var rdList = [];
+  var itemName = "研究開発費";
+  rdList.push(itemName);
+
+  for(var i = 9; i < rdTags.length; i++) {
+    rdList.push(replaceDashToZero(rdTags[i].match(/>(.*?)</)[1]));
+  }
+  return rdList;
+}
+
+function getRD(keyRatio) {
+  var rdRegExp = /<td align=\\"right\\" headers=\\"pr-Y[0-9]{1,2} pr-margins i16\\">(.*?)</g;
+  var rdTags = keyRatio.match(rdRegExp);
+  var rdList = [];
+  var itemName = "研究開発費";
+  rdList.push(itemName);
+
+  for(var i = 9; i < rdTags.length; i++) {
+    rdList.push(replaceDashToZero(rdTags[i].match(/>(.*?)</)[1]));
+  }
+  return rdList;
+}
+
+function getSGA(keyRatio) {
+  var sgaRegExp = /<td align=\\"right\\" headers=\\"pr-Y[0-9]{1,2} pr-margins i15\\">(.*?)</g;
+  var sgaTags = keyRatio.match(sgaRegExp);
+  var sgaList = [];
+  var itemName = "販管費";
+  sgaList.push(itemName);
+
+  for(var i = 9; i < sgaTags.length; i++) {
+    sgaList.push(replaceDashToZero(sgaTags[i].match(/>(.*?)</)[1]));
+  }
+  return sgaList;
+}
+
+function getCOGS(keyRatio) {
+  var cogsRegExp = /<td align=\\"right\\" headers=\\"pr-Y[0-9]{1,2} pr-margins i13\\">(.*?)</g;
+  var cogsTags = keyRatio.match(cogsRegExp);
+  var cogsList = [];
+  var itemName = "売上原価";
+  cogsList.push(itemName);
+
+  for(var i = 9; i < cogsTags.length; i++) {
+    cogsList.push(replaceDashToZero(cogsTags[i].match(/>(.*?)</)[1]));
+  }
+  return cogsList;
+}
+
+function getNetIntIncAndOther(keyRatio) {
+  var netIntIncAndOtherRegExp = /<td align=\\"right\\" headers=\\"pr-Y[0-9]{1,2} pr-margins i19\\">(.*?)</g;
+  var netIntIncAndOtherTags = keyRatio.match(netIntIncAndOtherRegExp);
+  var netIntIncAndOtherList = [];
+  var itemName = "営業外収益";
+  netIntIncAndOtherList.push(itemName);
+
+  for(var i = 9; i < netIntIncAndOtherTags.length; i++) {
+    netIntIncAndOtherList.push(replaceDashToZero(netIntIncAndOtherTags[i].match(/>(.*?)</)[1]));
+  }
+  return netIntIncAndOtherList;
+}
+
+function calculateRevenue(netIntIncAndOtherList) {
+  return ["売上高", 100 - netIntIncAndOtherList[1], 100 - netIntIncAndOtherList[2]]
+}
+
+function clearBSAllCharts() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName('貸借対照表');
+
+  // This removes all the embedded charts from the spreadsheet
+  var charts = sheet.getCharts();
+  for (var i in charts) {
+    sheet.removeChart(charts[i]);
+  }
+}
+
+function clearPLAllCharts() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName('損益計算書');
+
+  // This removes all the embedded charts from the spreadsheet
+  var charts = sheet.getCharts();
+  for (var i in charts) {
+    sheet.removeChart(charts[i]);
+  }
+}
+
+
