@@ -1,5 +1,3 @@
-// Author: Shota Onodera
-// All rights reserved Buffet Online School and Author.
 var no = "なし　No";
 var yes = "ある　Yes";
 var intCovRatioValues = [">  10", "> 4"];
@@ -9,35 +7,53 @@ var searchError = "エラーです。次のことを順に確認してくださ�
 
 function myFunction() {
   clearData();
-  var sheet = SpreadsheetApp.getActiveSheet(); 
-  var ticker = sheet.getRange(2, 2).getValue().toString();
-  var stockExchange = getStockExchange(sheet);
-  var byId = getById(ticker, stockExchange);
-  var financials;
-  var keyRatio;
-  var financialsUrl = "https://financials.morningstar.com/finan/financials/getFinancePart.html?&callback=jsonp1580192904311&t="+ byId +"&region=usa&culture=en-US&cur=&order=asc&_=1580192905566"
-  financials = UrlFetchApp.fetch(financialsUrl).getContentText();
-  var keyRatioUrl = "https://financials.morningstar.com/finan/financials/getKeyStatPart.html?&callback=jsonp1579473219364&t="+ byId +"&region=usa&culture=en-US&cur=&order=asc&_=1579473220658";
-  keyRatio = UrlFetchApp.fetch(keyRatioUrl).getContentText();
-  
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('AutoAssess');
+  var targetList = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("TargetList");
+  var count = targetList.getRange(1, 46).getValue() + 1;
+  targetList.getRange(1, 46).setValue(count);
+  var ticker = targetList.getRange(count, 1).getValue().toString();
+  var stockExchange = ['PINX','xnys', 'xnas'];
+  var targetExchange = '';
+  var byId = '';
+  for (var i =0; i < stockExchange.length; i++) {
+    if (byId !== '') {
+      break;
+    }
+    byId = getById(ticker, stockExchange[i]);
+    targetExchange = stockExchange[i];
+  }
+  if (byId !== '') {
+    targetList.getRange(count,44).setValue(targetExchange);
+    var financials;
+    var keyRatio;
+    var financialsUrl = "https://financials.morningstar.com/finan/financials/getFinancePart.html?&callback=jsonp1580192904311&t="+ byId +"&region=usa&culture=en-US&cur=&order=asc&_=1580192905566"
+    financials = UrlFetchApp.fetch(financialsUrl).getContentText();
+    var keyRatioUrl = "https://financials.morningstar.com/finan/financials/getKeyStatPart.html?&callback=jsonp1579473219364&t="+ byId +"&region=usa&culture=en-US&cur=&order=asc&_=1579473220658";
+    keyRatio = UrlFetchApp.fetch(keyRatioUrl).getContentText();
+    
 
-  var epsList = getEPS(financials);
-  var freeCashFlowList = getFreeCashFlow(financials);
-  var dividendsList = getDividends(financials);
-  var roeList = getROE(keyRatio);
-  var interestCoverageList = getInterestCoverage(keyRatio);
-  var netProfitMarginList = getNetProfitMargin(keyRatio);
-  var growthPercentile = getEPSGrowth(keyRatio);
-  var revenueGrowth = getRevenueGrowth(keyRatio);
-  var bookValueList = getBookValue(financials);
+    var epsList = getEPS(financials);
+    var freeCashFlowList = getFreeCashFlow(financials);
+    var dividendsList = getDividends(financials);
+    var roeList = getROE(keyRatio);
+    var interestCoverageList = getInterestCoverage(keyRatio);
+    var netProfitMarginList = getNetProfitMargin(keyRatio);
+    var growthPercentile = getEPSGrowth(keyRatio);
+    var revenueGrowth = getRevenueGrowth(keyRatio);
+    var bookValueList = getBookValue(financials);
 
-  clearFundamentals(sheet, epsList, freeCashFlowList, dividendsList, roeList, interestCoverageList, netProfitMarginList);
-  writeFundamentals(sheet, epsList, freeCashFlowList, dividendsList, roeList, interestCoverageList, netProfitMarginList);
-  writeEPSGrowth(sheet, growthPercentile);
-  writeRevenueGrowth(sheet, revenueGrowth);
-  writeBookValue(sheet, bookValueList);
-  assessFundamentals(sheet, epsList, freeCashFlowList, dividendsList, roeList, interestCoverageList, netProfitMarginList);
-  collectAssessedData(sheet);
+    clearFundamentals(sheet, epsList, freeCashFlowList, dividendsList, roeList, interestCoverageList, netProfitMarginList);
+    writeFundamentals(sheet, epsList, freeCashFlowList, dividendsList, roeList, interestCoverageList, netProfitMarginList);
+    writeEPSGrowth(sheet, growthPercentile);
+    writeRevenueGrowth(sheet, revenueGrowth);
+    writeBookValue(sheet, bookValueList);
+    assessFundamentals(sheet, epsList, freeCashFlowList, dividendsList, roeList, interestCoverageList, netProfitMarginList);
+    writeResultsToTargetList(sheet,targetList,count);
+    collectAssessedData(sheet);
+    targetList.getRange(1, 46).setValue(count);
+  } else {
+    return;
+  }
 }
 
 function addShoppingList() {
@@ -163,7 +179,8 @@ function getById(ticker, stockExchange) {
   var byIdRegExp = /byId:{\"(.+)\":.}/;
   var byId = mStarQuote.match(byIdRegExp)
   } catch (e) {
-    Browser.msgBox(searchError);
+    targetExchange = '';
+    byId = ['',''];
   }
   return byId[1];
 }
@@ -220,16 +237,52 @@ function assessFundamentals(sheet, epsList, freeCashFlowList, dividendsList, roe
   sheet.getRange(20,13).setValue(dividendsResult);
 }
 
+function writeResultsToTargetList(sheet, targetList, count) {
+  var score = sheet.getRange(20,2).getValue();
+  var epsResult = sheet.getRange(20,7).getValue();
+  var fcfResult = sheet.getRange(20,8).getValue();
+  var roeResult = sheet.getRange(20,9).getValue();
+  var icResult = sheet.getRange(20,10).getValue();
+  var netProfitMarginResult = sheet.getRange(20,12).getValue();
+  var dividendsResult = sheet.getRange(20,13).getValue();
+  var dividendsVal = sheet.getRange(20,19).getValue();
+  var latestEps = sheet.getRange(6, 11).getValue();
+  var epsGrowth = sheet.getRange(14,6).getValue();
+  var bps = sheet.getRange(16,11).getValue();
+
+  targetList.getRange(count,2).setValue(score);
+  targetList.getRange(count,7).setValue(epsResult);
+  targetList.getRange(count,8).setValue(fcfResult);
+  targetList.getRange(count,9).setValue(roeResult);
+  targetList.getRange(count,10).setValue(icResult);
+  targetList.getRange(count,12).setValue(netProfitMarginResult);
+  targetList.getRange(count,13).setValue(dividendsResult);
+  targetList.getRange(count,17).setValue(latestEps);
+  targetList.getRange(count,18).setValue(epsGrowth);
+  targetList.getRange(count,19).setValue(dividendsVal);
+  targetList.getRange(count,21).setValue(bps);
+}
+
 function assessEPS(epsList) {
+  var ngCount = 0;
   for(var i = 1; i < epsList.length; i++) {
     if(replaceToFloat(epsList[i]) < 0) {
+        ngCount++;
         return no;
       }
+    else if (replaceToFloat(epsList[i]) < replaceToFloat(epsList[i -1])) {
+      ngCount++;
+    }
   }
-  return yes;
+  if (ngCount > 4) {
+    return no;
+  } else {
+    return yes
+  }
 }
 
 function assessFreeCashFlow(freeCashFlowList) {
+  var ngCount = 0;
   for(var i = 1; i < freeCashFlowList.length; i++) {
     if(replaceToNumber(freeCashFlowList[i]) < 0) {
         return no;
@@ -983,3 +1036,5 @@ function clearPLAllCharts() {
     sheet.removeChart(charts[i]);
   }
 }
+
+

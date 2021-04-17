@@ -1,5 +1,3 @@
-// Author: Shota Onodera
-// All rights reserved Buffet Online School and Author.
 var no = "なし　No";
 var yes = "ある　Yes";
 var intCovRatioValues = [">  10", "> 4"];
@@ -30,12 +28,16 @@ function myFunction() {
   var growthPercentile = getEPSGrowth(keyRatio);
   var revenueGrowth = getRevenueGrowth(keyRatio);
   var bookValueList = getBookValue(financials);
+  var operatingCFList = getOperatingCF(financials);
+  var totalStockholdersEquitysList = getTotalStockholdersEquitysData(keyRatio, 0);
 
   clearFundamentals(sheet, epsList, freeCashFlowList, dividendsList, roeList, interestCoverageList, netProfitMarginList);
   writeFundamentals(sheet, epsList, freeCashFlowList, dividendsList, roeList, interestCoverageList, netProfitMarginList);
   writeEPSGrowth(sheet, growthPercentile);
   writeRevenueGrowth(sheet, revenueGrowth);
   writeBookValue(sheet, bookValueList);
+  writeOperatingCF(sheet, operatingCFList);
+  writeTotalStockholdersEquitys(sheet, totalStockholdersEquitysList);
   assessFundamentals(sheet, epsList, freeCashFlowList, dividendsList, roeList, interestCoverageList, netProfitMarginList);
   collectAssessedData(sheet);
 }
@@ -170,13 +172,13 @@ function getById(ticker, stockExchange) {
 
 function writeEPSGrowth(sheet, growthPercentile) {
   for (var i = 0; i < growthPercentile.length; i++) {
-    sheet.getRange(14, i + 2).setValue(growthPercentile[i]);
+    sheet.getRange(16, i + 2).setValue(growthPercentile[i]);
   }
 }
 
 function writeRevenueGrowth(sheet, revenueGrowth) {
   for (var i = 0; i < revenueGrowth.length; i++) {
-    sheet.getRange(14, i + 8).setValue(revenueGrowth[i]);
+    sheet.getRange(16, i + 8).setValue(revenueGrowth[i]);
   }
 }
 
@@ -197,10 +199,27 @@ function writeFundamentals(sheet, epsList, freeCashFlowList, dividendsList, roeL
 function writeBookValue(sheet, bookValueList) {
   var cols = bookValueList.length;
 
-  var replacedBookValueList = [];
   for (var i = 0; i < bookValueList.length; i++) {
     var replacedResult = replaceToDash(bookValueList[i]);
-    sheet.getRange(16,i + 1).setValue(replacedResult);
+    sheet.getRange(18,i + 1).setValue(replacedResult);
+  }
+}
+
+function writeOperatingCF(sheet, operatingCFList) {
+  var cols = operatingCFList.length;
+
+  for (var i = 0; i < operatingCFList.length; i++) {
+    var replacedResult = replaceToDash(operatingCFList[i]);
+    sheet.getRange(12,i + 1).setValue(replacedResult);
+  }
+}
+
+function writeTotalStockholdersEquitys(sheet, totalStockholdersEquitysList) {
+  var cols = totalStockholdersEquitysList.length;
+
+  for (var i = 0; i < totalStockholdersEquitysList.length; i++) {
+    var replacedResult = replaceToDash(totalStockholdersEquitysList[i]);
+    sheet.getRange(13,i + 1).setValue(replacedResult);
   }
 }
 
@@ -212,12 +231,12 @@ function assessFundamentals(sheet, epsList, freeCashFlowList, dividendsList, roe
   var icResult = assessIC(interestCoverageList);
   var netProfitMarginResult = assessNPM(netProfitMarginList);
 
-  sheet.getRange(20,7).setValue(epsResult);
-  sheet.getRange(20,8).setValue(fcfResult);
-  sheet.getRange(20,9).setValue(roeResult);
-  sheet.getRange(20,10).setValue(icResult);
-  sheet.getRange(20,12).setValue(netProfitMarginResult);
-  sheet.getRange(20,13).setValue(dividendsResult);
+  sheet.getRange(22,7).setValue(epsResult);
+  sheet.getRange(22,8).setValue(fcfResult);
+  sheet.getRange(22,9).setValue(roeResult);
+  sheet.getRange(22,10).setValue(icResult);
+  sheet.getRange(22,12).setValue(netProfitMarginResult);
+  sheet.getRange(22,13).setValue(dividendsResult);
 }
 
 function assessEPS(epsList) {
@@ -335,17 +354,17 @@ function getEPSGrowth(keyRatio) {
 }
 
 function getRevenueGrowth(keyRatio) {
-  var threeYrRegExp = /<td align=\\"right\\" headers=\\"gr-Y9 gr-revenue i28\\">(.*?)</g;
-  var fiveYrRegExp = /<td align=\\"right\\" headers=\\"gr-Y9 gr-revenue i29\\">(.*?)</g;
-  var tenYrRegExp = /<td align=\\"right\\" headers=\\"gr-Y9 gr-revenue i30\\">(.*?)</g;
-  var ttmRegExp = /<td align=\\"right\\" headers=\\"gr-Y9 gr-revenue i31\\">(.*?)</g;
+  var yoyRegExp = /<td align=\\"right\\" headers=\\"gr-Y9 gr-revenue i28\\">(.*?)</g;
+  var threeYrRegExp = /<td align=\\"right\\" headers=\\"gr-Y9 gr-revenue i29\\">(.*?)</g;
+  var fiveYrRegExp = /<td align=\\"right\\" headers=\\"gr-Y9 gr-revenue i30\\">(.*?)</g;
+  var tenYrRegExp = /<td align=\\"right\\" headers=\\"gr-Y9 gr-revenue i31\\">(.*?)</g;
 
+  var yoy = keyRatio.match(yoyRegExp)[0];
   var threeYr = keyRatio.match(threeYrRegExp)[0];
   var fiveYr = keyRatio.match(fiveYrRegExp)[0];
   var tenYr = keyRatio.match(tenYrRegExp)[0];
-  var ttm = keyRatio.match(ttmRegExp)[0];
 
-  var growthTags = [threeYr, fiveYr, tenYr, ttm];
+  var growthTags = [yoy, threeYr, fiveYr, tenYr];
   var growthPercentileList = [];
   for(var i = 0; i < growthTags.length; i++) {
     var replacedResult = replaceToDash(growthTags[i]);
@@ -353,6 +372,7 @@ function getRevenueGrowth(keyRatio) {
   }
   return growthPercentileList;
 }
+
 
 function getFreeCashFlow(financials) {
   var fcfRegExp = /<td align=\\"right\\" headers=\\"Y[0-9]{1,2} i11\\">(.*?)</g;
@@ -398,6 +418,22 @@ function getBookValue(financials) {
   }
   return bookValueList;
 }
+
+function getOperatingCF(financials) {
+  var operatingCFRegExp = /<td align=\\"right\\" headers=\\"Y[0-9]{1,2} i9\\">(.*?)</g;
+  var colNameRegExp = /<th class=\\"row_lbl\\" scope=\\"row\\" id=\\"i9\\">(.*?)<\\\/th>/g;
+  var operatingCFTags = financials.match(operatingCFRegExp);
+  var operatingCFList = []
+  var htmlTag = financials.match(colNameRegExp)[0];
+  var colName = extractColName(htmlTag);
+  operatingCFList.push(colName);
+  // Removed TTM by length - 1
+  for(var i = 0; i < operatingCFTags.length -1; i++) {
+    operatingCFList.push(operatingCFTags[i].match(/>(.*?)</)[1]);
+  }
+  return operatingCFList;
+}
+
 
 function getROE(keyRatio) {
   var roeRegExp = /<td align=\\"right\\" headers=\\"pr-pro-Y[0-9]{1,2} pr-profit i26\\">(.*?)</g;
@@ -458,11 +494,11 @@ function findRow(sheet, ticker) {
 
 function clearData() {
   var sheet = SpreadsheetApp.getActiveSheet(); 
-  var target1 = sheet.getRange("A6:K11");
-  var target2 = sheet.getRange("B14:D14");
-  var target3 = sheet.getRange("A16:K16");
-  var target4 = sheet.getRange("C20:C20");
-  var target5 = sheet.getRange("G20:P20");
+  var target1 = sheet.getRange("A6:K13");
+  var target2 = sheet.getRange("B16:D16");
+  var target3 = sheet.getRange("A18:K18");
+  var target4 = sheet.getRange("C22:C22");
+  var target5 = sheet.getRange("G22:P22");
   target1.clearContent();
   target2.clearContent();
   target3.clearContent();
@@ -473,11 +509,11 @@ function clearData() {
 function clearAll() {
   var sheet = SpreadsheetApp.getActiveSheet(); 
   var target0 = sheet.getRange("B2:B3");
-  var target1 = sheet.getRange("A6:K11");
-  var target2 = sheet.getRange("B14:D14");
-  var target3 = sheet.getRange("A16:K16");
-  var target4 = sheet.getRange("C20:C20");
-  var target5 = sheet.getRange("G20:P20");
+  var target1 = sheet.getRange("A6:K13");
+  var target2 = sheet.getRange("B16:D16");
+  var target3 = sheet.getRange("A18:K18");
+  var target4 = sheet.getRange("C22:C22");
+  var target5 = sheet.getRange("G22:P22");
   target0.clearContent();
   target1.clearContent();
   target2.clearContent();
@@ -528,7 +564,7 @@ function getBSNestedList(sheet, keyRatio) {
   var otherShortTermLiabilitiesList = getOtherShortTermLiabilitiesData(keyRatio)
   var longTermDebtList = getLongTermDebtData(keyRatio)
   var otherLongTermLiabilitiesList = getOtherLongTermLiabilitiesData(keyRatio)
-  var totalStockholdersEquitysList = getTotalStockholdersEquitysData(keyRatio)
+  var totalStockholdersEquitysList = getTotalStockholdersEquitysData(keyRatio,8)
 
   var assetsItemName = [otherLongTermAssetsList[0], intangiblesList[0], netPPAndEList[0], otherCurrentAssetList[0], inventoryList[0], accountsReceivableList[0], cashEtcList[0]];
   var pastAssets = [otherLongTermAssetsList[1], intangiblesList[1], netPPAndEList[1], otherCurrentAssetList[1], inventoryList[1], accountsReceivableList[1], cashEtcList[1]];
@@ -786,14 +822,14 @@ function getOtherLongTermLiabilitiesData(keyRatio) {
   return otherLongTermLiabilitiesList;
 }
 
-function getTotalStockholdersEquitysData(keyRatio) {
+function getTotalStockholdersEquitysData(keyRatio, index) {
   var totalStockholdersEquitysRegExp = /<td align=\\"right\\" headers=\\"fh-Y[0-9]{1,2} fh-balsheet i63\\">(.*?)</g;
   var totalStockholdersEquitysTags = keyRatio.match(totalStockholdersEquitysRegExp);
   var totalStockholdersEquitysList = [];
   var itemName = "資本金";
   totalStockholdersEquitysList.push(itemName);
 
-  for(var i = 8; i < totalStockholdersEquitysTags.length -1; i++) {
+  for(var i = index; i < totalStockholdersEquitysTags.length -1; i++) {
     totalStockholdersEquitysList.push(replaceDashToZero(totalStockholdersEquitysTags[i].match(/>(.*?)</)[1]));
   }
   return totalStockholdersEquitysList;
@@ -983,3 +1019,5 @@ function clearPLAllCharts() {
     sheet.removeChart(charts[i]);
   }
 }
+
+
