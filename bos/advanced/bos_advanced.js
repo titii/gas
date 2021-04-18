@@ -4,13 +4,24 @@ var intCovRatioValues = [">  10", "> 4"];
 var netProfitMarginValues = [">20%", ">10%"];
 var searchError = "エラーです。次のことを順に確認してください。\\n TickerやExchangesを変更した後フォーカスを外しましたか？ \\n TickerやExchangesは正確ですが？ \\n モーニングスターにデータはありますか？"
 
+function removeTrigger(count) {
+  var triggers = ScriptApp.getProjectTriggers();
+  for (var i = 0; i < triggers.length; i++) {
+    ScriptApp.deleteTrigger(triggers[i]);
+  }
+}
 
 function myFunction() {
   clearData();
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('AutoAssess');
   var targetList = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("TargetList");
   var count = targetList.getRange(1, 46).getValue() + 1;
-  targetList.getRange(1, 46).setValue(count);
+  var end = targetList.getRange(1, 47).getValue();
+
+  if (count < end) {
+    removeTrigger(count);
+  }
+
   var ticker = targetList.getRange(count, 1).getValue().toString();
   var stockExchange = ['PINX','xnys', 'xnas'];
   var targetExchange = '';
@@ -69,22 +80,6 @@ function addShoppingList() {
     var lastrow = shoppingList.getLastRow()+1;
     shoppingList.appendRow(result[0]);
   }
-}
-
-function clearAll() {
-  var sheet = SpreadsheetApp.getActiveSheet(); 
-  var target0 = sheet.getRange("B2:B3");
-  var target1 = sheet.getRange("A6:K11");
-  var target2 = sheet.getRange("B14:D14");
-  var target3 = sheet.getRange("A16:K16");
-  var target4 = sheet.getRange("C20:C20");
-  var target5 = sheet.getRange("G20:P20");
-  target0.clearContent();
-  target1.clearContent();
-  target2.clearContent();
-  target3.clearContent();
-  target4.clearContent();
-  target5.clearContent();
 }
 
 function updateDataForDbSheet(dbSheet, ticker, score) {
@@ -176,7 +171,7 @@ function getById(ticker, stockExchange) {
   try {
   var mStarQuoteUrl = "https://www.morningstar.com/stocks/"+ stockExchange +"/"+ ticker.toLowerCase() +"/quote";
   var mStarQuote = UrlFetchApp.fetch(mStarQuoteUrl).getContentText();
-  var byIdRegExp = /byId:{\"(.+)\":.}/;
+  var byIdRegExp = /byId:{\"(.+)\":.+}/;
   var byId = mStarQuote.match(byIdRegExp)
   } catch (e) {
     targetExchange = '';
@@ -249,6 +244,7 @@ function writeResultsToTargetList(sheet, targetList, count) {
   var latestEps = sheet.getRange(6, 11).getValue();
   var epsGrowth = sheet.getRange(14,6).getValue();
   var bps = sheet.getRange(16,11).getValue();
+  var eps = sheet.getRange(6,11).getValue();
 
   targetList.getRange(count,2).setValue(score);
   targetList.getRange(count,7).setValue(epsResult);
@@ -260,7 +256,8 @@ function writeResultsToTargetList(sheet, targetList, count) {
   targetList.getRange(count,17).setValue(latestEps);
   targetList.getRange(count,18).setValue(epsGrowth);
   targetList.getRange(count,19).setValue(dividendsVal);
-  targetList.getRange(count,21).setValue(bps);
+  targetList.getRange(count,45).setValue(eps);
+  targetList.getRange(count,46).setValue(bps);
 }
 
 function assessEPS(epsList) {
@@ -510,28 +507,12 @@ function findRow(sheet, ticker) {
 }
 
 function clearData() {
-  var sheet = SpreadsheetApp.getActiveSheet(); 
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('AutoAssess');
   var target1 = sheet.getRange("A6:K11");
   var target2 = sheet.getRange("B14:D14");
   var target3 = sheet.getRange("A16:K16");
   var target4 = sheet.getRange("C20:C20");
   var target5 = sheet.getRange("G20:P20");
-  target1.clearContent();
-  target2.clearContent();
-  target3.clearContent();
-  target4.clearContent();
-  target5.clearContent();
-}
-
-function clearAll() {
-  var sheet = SpreadsheetApp.getActiveSheet(); 
-  var target0 = sheet.getRange("B2:B3");
-  var target1 = sheet.getRange("A6:K11");
-  var target2 = sheet.getRange("B14:D14");
-  var target3 = sheet.getRange("A16:K16");
-  var target4 = sheet.getRange("C20:C20");
-  var target5 = sheet.getRange("G20:P20");
-  target0.clearContent();
   target1.clearContent();
   target2.clearContent();
   target3.clearContent();

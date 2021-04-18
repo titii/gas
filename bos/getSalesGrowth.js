@@ -12,8 +12,8 @@ function getList() {
 
 function myFunction() {
   var sheet = SpreadsheetApp.getActiveSheet(); 
-  var count = sheet.getRange(2, 26).getValue() + 1;
-  var ticker = sheet.getRange(count, 1).getValue().toString();
+  var count = parseInt(sheet.getRange(2, 26).getValue() + 1,10);
+  var ticker = parseInt(sheet.getRange(count, 1).getValue().toString(),10);
   var stockExchange = ['PINX','xnys', 'xnas'];
   var targetExchange = '';
   var byId = '';
